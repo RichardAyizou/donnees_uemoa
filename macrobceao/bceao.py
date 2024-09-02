@@ -1,7 +1,10 @@
 import pandas as pd
+import numpy as np
+
 import re
 from io import StringIO
 
+import plotly.express as px
 
 class Data:
     def __init__(self, file_path, file_type='xls'):
@@ -65,7 +68,7 @@ class Data:
         # set indicators as columns names
         columns1 = df1.iloc[1]
         df1.columns = [col.replace('.', '').strip() for col in list(columns1)]
-        df1 = df1.reset_index().rename(columns={'index':'Annee'})
+        df1 = df1.reset_index().rename(columns={'index':'Date'})
         # create country column
         df1['Country'] = self.country_list[0]
         
@@ -94,9 +97,55 @@ class Data:
             columns = df.iloc[1]
             df = df[2:]
             df.columns = [col.replace('.', '').strip() for col in list(columns)]
-            df = df.reset_index().rename(columns={'index':'Annee'})
+            df = df.reset_index().rename(columns={'index':'Date'})
             df['Country'] = c
             self.merged = pd.concat([self.merged, df])
+            self.merged = self.merged.replace('-', np.nan)
+            self.merged.iloc[:, 1:-1] = self.merged.iloc[:, 1:-1].replace(',', '', regex=True).astype(float)
+            self.merged['Date'] = pd.to_datetime(self.merged['Date'])
+            self.merged = self.merged.sort_values(by=['Date', 'Country'])
 
         return self.merged
+        
+    
+    def diagnostic_statistics(self):
+        df = self.load_data()
+        
+        print('='*5, '*'*20, '='*5)
+        print('Dimensions des données')
+        print('-'*3)
+        print('Nombre de lignes :', df.shape[0])
+        print('Nombre de colonnes :', df.shape[1])
+        print('\n'*2)
+        
+        print('='*5, '*'*20, '='*5)
+        print("Période de l'étude")
+        print('-'*3)
+        print('Début :', df.Date.min())
+        print('Fin :', df.Date.max())
+        print('Taille :', df.Date.nunique())
+        print('\n'*2)
+        
+        print('='*5, '*'*20, '='*5)
+        print("Pays inclus dans l'étude")
+        print('-'*3)
+        print('Nombre de pays :', df.Country.nunique())
+        print('Liste des pays :', list(df.Country.unique()))
+        print('\n'*2)
+        
+        print('='*5, '*'*20, '='*5)
+        print("Données manquantes par variable")
+        print('-'*3)
+        l_col = df.columns.to_list()
+        l_missing = [df[col].isna().sum() for col in l_col]
+        print(list(zip(l_col, l_missing)))
+        print('\n'*2)
+        
+    def diagnostic_plot(self, col):
+        df = self.load_data()
+
+        # line plot
+        fig = px.line(df, x='Date', y=col)
+        fig.show()
+
         
