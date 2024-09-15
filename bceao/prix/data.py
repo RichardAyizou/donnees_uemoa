@@ -15,8 +15,7 @@ class Data:
             self.content, self.content_str, self.country_pattern, self.country_list = self.read_file()
         elif self.file_type=='csv':
             self.data, self.country_list, self.content_str = self.read_file()
-        
-        self.patern_mois = r'^[A-Z]{3}[0-9]{4}$'
+            
         self.dict_mois = {
             'JAN': '01', 'FEV': '02', 'MAR': '03', 'AVR': '04',
             'MAI': '05', 'JUN': '06', 'JUL': '07', 'AOU': '08',
@@ -78,7 +77,7 @@ class Data:
         dict_columns = dict(zip_code_columns1)
         df1.columns = [col.replace('.', '').strip() for col in list(columns1)]
         df1 = df1.reset_index().rename(columns={'index':'Date'})
-        if df1['Date'].apply(lambda x: bool(re.match(self.patern_mois, x))).all():
+        if (df1['Date'].dtype == 'object'):
             df1['Mois'] = df1['Date'].str[:3]
             df1['Annee'] = df1['Date'].str[3:]
         
@@ -121,20 +120,18 @@ class Data:
             self.merged = self.merged.replace('-', np.nan)
             col_sans_country = [col for col in df.columns.to_list() if ((col!='Country') & (col!='Date'))]
 #             self.merged.loc[:, col_sans_country] = self.merged.loc[:, col_sans_country].replace(',', '', regex=True).astype(float)
-            print(col_sans_country)
             self.merged.loc[:, col_sans_country] = self.merged.loc[:, col_sans_country].replace(',', '.', regex=True).astype(float)
-            if self.merged['Date'].astype(str).apply(lambda x: bool(re.match(self.patern_mois, x))).all():
+            if (self.merged['Date'].dtype != 'object'):
+                self.merged['Date'] = pd.to_datetime(self.merged['Date'])
+                self.merged = self.merged.sort_values(by=['Date', 'Country'])
+            else:
                 self.merged['Mois'] = self.merged['Date'].str[:3].map(self.dict_mois)
                 self.merged['Annee'] = self.merged['Date'].str[3:]
                 self.merged = self.merged.sort_values(by=['Annee', 'Mois', 'Country'])
-            else:
-                self.merged['Date'] = pd.to_datetime(self.merged['Date'])
-                self.merged = self.merged.sort_values(by=['Date', 'Country'])
             
 
         return self.merged
         
-    
     
     def diagnostic_statistics(self):
         df = self.load_data()
@@ -168,12 +165,4 @@ class Data:
         l_missing = [df[col].isna().sum() for col in l_col]
         print(list(zip(l_col, l_missing)))
         print('\n'*2)
-        
-    def diagnostic_plot(self, col):
-        df = self.load_data()
-
-        # line plot
-        fig = px.line(df, x='Date', y=col)
-        fig.show()
-
         
