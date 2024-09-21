@@ -76,7 +76,18 @@ class Data:
         code1 = df1.iloc[0].str[3:]
         zip_code_columns1 = list(zip(code1, columns1))
         dict_columns = dict(zip_code_columns1)
-        df1.columns = [col.replace('.', '').strip() for col in list(columns1)]
+        
+        # Traiter le cas des valeurs en pourcentage du PIB
+        columns1_pib = []
+        prev = None
+        for i in range(len(columns1)):
+            if '(en % du PIB)' in columns1[i]:
+                columns1_pib.append(prev + " " + columns1[i])
+            else:
+                columns1_pib.append(columns1[i])
+                prev = columns1[i]
+
+        df1.columns = [col.replace('.', '').strip() for col in list(columns1_pib)]
         df1 = df1.reset_index().rename(columns={'index':'Date'})
         if df1['Date'].apply(lambda x: bool(re.match(self.patern_mois, x))).all():
             df1['Mois'] = df1['Date'].str[:3]
@@ -121,8 +132,19 @@ class Data:
             self.merged = self.merged.replace('-', np.nan)
             col_sans_country = [col for col in df.columns.to_list() if ((col!='Country') & (col!='Date'))]
 #             self.merged.loc[:, col_sans_country] = self.merged.loc[:, col_sans_country].replace(',', '', regex=True).astype(float)
-            print(col_sans_country)
-            self.merged.loc[:, col_sans_country] = self.merged.loc[:, col_sans_country].replace(',', '.', regex=True).astype(float)
+            # Traiter le cas des valeurs en pourcentage du PIB
+            col_sans_country_pib = []
+            prev = None
+            for i in range(len(col_sans_country)):
+                if '(en % du PIB)' in col_sans_country[i]:
+                    col_sans_country_pib.append(prev + " " + col_sans_country[i])
+                else:
+                    col_sans_country_pib.append(col_sans_country[i])
+                    prev = col_sans_country[i]
+            print('col_sans_country:', len(col_sans_country))
+            print('col_sans_country_pib:', len(col_sans_country_pib))
+            print(col_sans_country_pib)
+            self.merged.loc[:, col_sans_country_pib] = self.merged.loc[:, col_sans_country_pib].replace(',', '.', regex=True).astype(float)
             if self.merged['Date'].astype(str).apply(lambda x: bool(re.match(self.patern_mois, x))).all():
                 self.merged['Mois'] = self.merged['Date'].str[:3].map(self.dict_mois)
                 self.merged['Annee'] = self.merged['Date'].str[3:]
